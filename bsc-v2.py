@@ -2,7 +2,7 @@
 
 # this script can installed to the current user account by running the following commands:
 
-# sudo apt-get install python-nautilus python-mutagen python-pyexiv2 python-kaa-metadata
+# sudo apt-get install python-nautilus python-mutagen python-pyexiv2 python-kaa-metadata ffmpeg
 # mkdir ~/.local/share/nautilus-python/extensions/
 # cp bsc-v2.py ~/.local/share/nautilus-python/extensions/
 # chmod a+x ~/.local/share/nautilus-python/extensions/bsc-v2.py
@@ -29,6 +29,7 @@
 # draxus: support for pdf files
 # arun (engineerarun@gmail.com): made changes to work with naulitus 3.x
 # Andrew@webupd8.org: get EXIF support to work with Nautilus 3
+# samuelwn: changed video metadata extraction to use ffprobe instead of kaa.metadata
 
 import os
 import urllib
@@ -39,11 +40,12 @@ from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MPEGInfo
 # for exif support
 import pyexiv2
-# for reading videos. for future improvement, this can also read mp3!
-import kaa.metadata
 # for reading image dimensions
 import Image
 # for reading pdf
+import subprocess as sp
+# Used to trigger ffprobe for reading videos
+import string
 try:
     from pyPdf import PdfFileReader
 except:
@@ -171,28 +173,83 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
 
         # video/flac handling
         if file.is_mime_type('video/x-msvideo') | file.is_mime_type('video/mpeg') | file.is_mime_type('video/x-ms-wmv') | file.is_mime_type('video/mp4') | file.is_mime_type('audio/x-flac') | file.is_mime_type('video/x-flv') | file.is_mime_type('video/x-matroska') | file.is_mime_type('audio/x-wav'):
+            # info, error =sp.call(['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename])
+
+            command=['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename]
+
+            p = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE)
+            out, err = p.communicate()
+
+            info = out.split('\n')
             try:
-                info=kaa.metadata.parse(filename)
-                try: file.add_string_attribute('length',"%02i:%02i:%02i" % ((int(info.length/3600)), (int(info.length/60%60)), (int(info.length%60))))
-                except: file.add_string_attribute('length','[n/a]')
-                try: file.add_string_attribute('pixeldimensions', str(info.video[0].width) + 'x'+ str(info.video[0].height))
-                except: file.add_string_attribute('pixeldimensions','[n/a]')
-                try: file.add_string_attribute('bitrate',str(round(info.audio[0].bitrate/1000)))
-                except: file.add_string_attribute('bitrate','[n/a]')
-                try: file.add_string_attribute('samplerate',str(int(info.audio[0].samplerate))+' Hz')
-                except: file.add_string_attribute('samplerate','[n/a]')
-                try: file.add_string_attribute('title', info.title)
-                except: file.add_string_attribute('title', '[n/a]')
-                try: file.add_string_attribute('artist', info.artist)
-                except: file.add_string_attribute('artist', '[n/a]')
-                try: file.add_string_attribute('genre', info.genre)
-                except: file.add_string_attribute('genre', '[n/a]')
-                try: file.add_string_attribute('tracknumber',info.trackno)
-                except: file.add_string_attribute('tracknumber', '[n/a]')
-                try: file.add_string_attribute('date',info.userdate)
-                except: file.add_string_attribute('date', '[n/a]')
-                try: file.add_string_attribute('album',info.album)
-                except: file.add_string_attribute('album', '[n/a]')
+                # info=kaa.metadata.parse(filename)
+                # command = ['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename]
+                # info=sp.Popen(command, stdout=sp.PIPE).communicate()[0].split('\n')
+
+                width = '[n/a]'
+                height = '[n/a]'
+
+                # for line in info:
+                    # if line.startswith('duration='):
+                    #     try: file.add_string_attribute('length', str(line[10:]))
+                    #     except: file.add_string_attribute('length','[n/a]')
+                    # elif line.startswith('width='):
+                    #     width = line[6:]
+                    # elif line.startswith('height='):
+                    #     height = line[7:]
+                    # elif line.startswith('bit_rate='):
+                    #     try: file.add_string_attribute('bitrate', str(line[9:]))
+                    #     except: file.add_string_attribute('bitrate','[n/a]')
+                    # elif line.startswith('sample_rate='):
+                    #     try: file.add_string_attribute('samplerate', str(line[12:]))
+                    #     except: file.add_string_attribute('samplerate','[n/a]')
+                    # elif line.startswith('TAG:title='):
+                    #     try: file.add_string_attribute('title', str(line[10:]))
+                    #     except: file.add_string_attribute('title','[n/a]')
+                    # elif line.startswith('TAG:artist='):
+                    #     try: file.add_string_attribute('artist', str(line[11:]))
+                    #     except: file.add_string_attribute('artist','[n/a]')
+                    # elif line.startswith('TAG:genre='):
+                    #     try: file.add_string_attribute('genre', str(line[10:]))
+                    #     except: file.add_string_attribute('genre','[n/a]')
+                    # elif line.startswith('TAG:track='):
+                    #     try: file.add_string_attribute('tracknumber', str(line[10:]))
+                    #     except: file.add_string_attribute('tracknumber','[n/a]')
+                    # elif line.startswith('TAG:date='):
+                    #     try: file.add_string_attribute('date', str(line[9:]))
+                    #     except: file.add_string_attribute('date','[n/a]')
+                    # elif line.startswith('TAG:album='):
+                    #     try: file.add_string_attribute('album', str(line[10:]))
+                    #     except: file.add_string_attribute('album','[n/a]')
+                for line in info:
+                    if line.startswith('duration='):
+                        file.add_string_attribute('length', str(line[9:]))
+                    elif line.startswith('width='):
+                        width = line[6:]
+                    elif line.startswith('height='):
+                        height = line[7:]
+                    elif line.startswith('bit_rate='):
+                        file.add_string_attribute('bitrate', str(line[9:]))
+                    elif line.startswith('sample_rate='):
+                        file.add_string_attribute('samplerate', str(line[12:]))
+                    elif line.startswith('TAG:title='):
+                        file.add_string_attribute('title', str(line[10:]))
+                    elif line.startswith('TAG:artist='):
+                        file.add_string_attribute('artist', str(line[11:]))
+                    elif line.startswith('TAG:genre='):
+                        file.add_string_attribute('genre', str(line[10:]))
+                    elif line.startswith('TAG:track='):
+                        file.add_string_attribute('tracknumber', str(line[10:]))
+                    elif line.startswith('TAG:date='):
+                        file.add_string_attribute('date', str(line[9:]))
+                    elif line.startswith('TAG:album='):
+                        file.add_string_attribute('album', str(line[10:]))
+                if height != '[n/a]' and width != '[n/a]':
+                    print "pixeldimensions = " + width + 'x'+ height
+
+                if height != '[n/a]' and width != '[n/a]':
+                    file.add_string_attribute('pixeldimensions', str(width) + 'x'+ str(height))
+
             except:
                 file.add_string_attribute('length','error')
                 file.add_string_attribute('pixeldimensions','error')
@@ -204,6 +261,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                 file.add_string_attribute('track','error')
                 file.add_string_attribute('date','error')
                 file.add_string_attribute('album','error')
+
         # pdf handling
         if file.is_mime_type('application/pdf'):
             try:
