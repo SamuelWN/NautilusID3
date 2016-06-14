@@ -37,14 +37,14 @@ import urllib
 from gi.repository import Nautilus, GObject, Gtk, GdkPixbuf
 # for id3 support
 from mutagen.easyid3 import EasyID3
-from mutagen.mp3 import MPEGInfo
 # for exif support
-import pyexiv2
+from mutagen.mp3 import MPEGInfo
 # for reading image dimensions
-import Image
+import pyexiv2
 # for reading pdf
-import subprocess as sp
+import Image
 # Used to trigger ffprobe for reading videos
+import subprocess as sp
 import string
 try:
     from pyPdf import PdfFileReader
