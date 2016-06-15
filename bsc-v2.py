@@ -173,55 +173,19 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
 
         # video/flac handling
         if file.is_mime_type('video/x-msvideo') | file.is_mime_type('video/mpeg') | file.is_mime_type('video/x-ms-wmv') | file.is_mime_type('video/mp4') | file.is_mime_type('audio/x-flac') | file.is_mime_type('video/x-flv') | file.is_mime_type('video/x-matroska') | file.is_mime_type('audio/x-wav'):
-            # info, error =sp.call(['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename])
-
-            command=['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename]
-
+            command = ['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename]
             p = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE)
+            # Grab the output from the shell command
             out, err = p.communicate()
-
+            # Split the text into a list
             info = out.split('\n')
+
             try:
-                # info=kaa.metadata.parse(filename)
-                # command = ['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename]
-                # info=sp.Popen(command, stdout=sp.PIPE).communicate()[0].split('\n')
+                width  = height = '[n/a]'
 
-                width = '[n/a]'
-                height = '[n/a]'
-
-                # for line in info:
-                    # if line.startswith('duration='):
-                    #     try: file.add_string_attribute('length', str(line[10:]))
-                    #     except: file.add_string_attribute('length','[n/a]')
-                    # elif line.startswith('width='):
-                    #     width = line[6:]
-                    # elif line.startswith('height='):
-                    #     height = line[7:]
-                    # elif line.startswith('bit_rate='):
-                    #     try: file.add_string_attribute('bitrate', str(line[9:]))
-                    #     except: file.add_string_attribute('bitrate','[n/a]')
-                    # elif line.startswith('sample_rate='):
-                    #     try: file.add_string_attribute('samplerate', str(line[12:]))
-                    #     except: file.add_string_attribute('samplerate','[n/a]')
-                    # elif line.startswith('TAG:title='):
-                    #     try: file.add_string_attribute('title', str(line[10:]))
-                    #     except: file.add_string_attribute('title','[n/a]')
-                    # elif line.startswith('TAG:artist='):
-                    #     try: file.add_string_attribute('artist', str(line[11:]))
-                    #     except: file.add_string_attribute('artist','[n/a]')
-                    # elif line.startswith('TAG:genre='):
-                    #     try: file.add_string_attribute('genre', str(line[10:]))
-                    #     except: file.add_string_attribute('genre','[n/a]')
-                    # elif line.startswith('TAG:track='):
-                    #     try: file.add_string_attribute('tracknumber', str(line[10:]))
-                    #     except: file.add_string_attribute('tracknumber','[n/a]')
-                    # elif line.startswith('TAG:date='):
-                    #     try: file.add_string_attribute('date', str(line[9:]))
-                    #     except: file.add_string_attribute('date','[n/a]')
-                    # elif line.startswith('TAG:album='):
-                    #     try: file.add_string_attribute('album', str(line[10:]))
-                    #     except: file.add_string_attribute('album','[n/a]')
+                # Parse through the lines of the `ffprobe` output
                 for line in info:
+                    # Look for pertainant fields and grab the values (based upon index)
                     if line.startswith('duration='):
                         file.add_string_attribute('length', str(line[9:]))
                     elif line.startswith('width='):
@@ -244,8 +208,6 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                         file.add_string_attribute('date', str(line[9:]))
                     elif line.startswith('TAG:album='):
                         file.add_string_attribute('album', str(line[10:]))
-                if height != '[n/a]' and width != '[n/a]':
-                    print "pixeldimensions = " + width + 'x'+ height
 
                 if height != '[n/a]' and width != '[n/a]':
                     file.add_string_attribute('pixeldimensions', str(width) + 'x'+ str(height))
