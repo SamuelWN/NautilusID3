@@ -2,7 +2,8 @@
 
 # this script can installed to the current user account by running the following commands:
 
-# sudo apt-get install python-nautilus python-mutagen python-pyexiv2 python-kaa-metadata ffmpeg
+# pip install pymediainfo
+# sudo apt-get install python-nautilus python-mutagen python-pyexiv2 mediainfo
 # mkdir ~/.local/share/nautilus-python/extensions/
 # cp bsc-v2.py ~/.local/share/nautilus-python/extensions/
 # chmod a+x ~/.local/share/nautilus-python/extensions/bsc-v2.py
@@ -30,6 +31,7 @@
 # arun (engineerarun@gmail.com): made changes to work with naulitus 3.x
 # Andrew@webupd8.org: get EXIF support to work with Nautilus 3
 # samuelwn: changed video metadata extraction to use ffprobe instead of kaa.metadata
+# samuelwn: changed video metadata extraction to use pymediainfo instead of ffprobe
 
 import os
 import urllib
@@ -43,9 +45,11 @@ from mutagen.mp3 import MPEGInfo
 import pyexiv2
 # for reading pdf
 import Image
-# Used to trigger ffprobe for reading videos
-import subprocess as sp
-import string
+# for reading video
+from pymediainfo import MediaInfo
+
+from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 try:
     from pyPdf import PdfFileReader
 except:
@@ -71,6 +75,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
             Nautilus.Column(name="NautilusPython::exif_flash_column",attribute="exif_flash",label="EXIF flash",description="EXIF - flash mode"),
             Nautilus.Column(name="NautilusPython::exif_pixeldimensions_column",attribute="exif_pixeldimensions",label="EXIF Image Size",description="Image size - pixel dimensions as reported by EXIF data"),
             Nautilus.Column(name="NautilusPython::pixeldimensions_column",attribute="pixeldimensions",label="Image Size",description="Image/video size - actual pixel dimensions"),
+            Nautilus.Column(name="NautilusPython::comment_column",attribute="comment",label="Comments",description="Image/video comments"),
         )
 
     def update_file_info(self, file):
@@ -89,6 +94,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
         file.add_string_attribute('exif_flash', '')
         file.add_string_attribute('exif_pixeldimensions', '')
         file.add_string_attribute('pixeldimensions', '')
+        file.add_string_attribute('comment', '')
 
         if file.get_uri_scheme() != 'file':
             return
@@ -173,44 +179,37 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
 
         # video/flac handling
         if file.is_mime_type('video/x-msvideo') | file.is_mime_type('video/mpeg') | file.is_mime_type('video/x-ms-wmv') | file.is_mime_type('video/mp4') | file.is_mime_type('audio/x-flac') | file.is_mime_type('video/x-flv') | file.is_mime_type('video/x-matroska') | file.is_mime_type('audio/x-wav'):
-            command = ['ffprobe', '-show_format', '-show_streams', '-pretty', '-loglevel', 'quiet', filename]
-            p = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE)
-            # Grab the output from the shell command
-            out, err = p.communicate()
-            # Split the text into a list
-            info = out.split('\n')
+            media_info = MediaInfo.parse(filename)
 
             try:
-                width  = height = '[n/a]'
+                for track in media_info.tracks:
+                    if track.track_type == 'General':
+                        try: file.add_string_attribute('artist', track.performer)
+                        except: file.add_string_attribute('artist', '[n/a]')
+                        try: file.add_string_attribute('title', track.movie_name)
+                        except:
+                            try: file.add_string_attribute('title', track.title)
+                            except: file.add_string_attribute('title', '[n/a]')
+                        try: file.add_string_attribute('album',track.album)
+                        except: file.add_string_attribute('album', '[n/a]')
+                        try: file.add_string_attribute('date',track.recorded_date)
+                        except: file.add_string_attribute('date', '[n/a]')
+                        try: file.add_string_attribute('tracknumber',str(track.track_name_position) + "/" + str(track.track_name_total))
+                        except: file.add_string_attribute('tracknumber', '[n/a]')
+                        try: file.add_string_attribute('comment', track.comment)
+                        except: file.add_string_attribute('comment', '[n/a]')
+                    elif track.track_type == 'Video':
+                        try: file.add_string_attribute('length',"%02i:%02i:%02i" % ((int(track.duration/3600)), (int(track.duration/60%60)), (int(track.duration%60))))
+                        except: file.add_string_attribute('length','[n/a]')
+                        try: file.add_string_attribute('pixeldimensions', str(track.width) + 'x'+ str(track.height))
+                        except: file.add_string_attribute('pixeldimensions','[n/a]')
+                        try: file.add_string_attribute('bitrate',str(round(track.bit_rate/1000)))
+                        except: file.add_string_attribute('bitrate','[n/a]')
+                        try: file.add_string_attribute('samplerate',str(int(track.sampling_rate))+' Hz')
+                        except: file.add_string_attribute('samplerate','[n/a]')
+                        try: file.add_string_attribute('genre', track.genre)
+                        except: file.add_string_attribute('genre', '[n/a]')
 
-                # Parse through the lines of the `ffprobe` output
-                for line in info:
-                    # Look for pertainant fields and grab the values (based upon index)
-                    if line.startswith('duration='):
-                        file.add_string_attribute('length', str(line[9:]))
-                    elif line.startswith('width='):
-                        width = line[6:]
-                    elif line.startswith('height='):
-                        height = line[7:]
-                    elif line.startswith('bit_rate='):
-                        file.add_string_attribute('bitrate', str(line[9:]))
-                    elif line.startswith('sample_rate='):
-                        file.add_string_attribute('samplerate', str(line[12:]))
-                    elif line.startswith('TAG:title='):
-                        file.add_string_attribute('title', str(line[10:]))
-                    elif line.startswith('TAG:artist='):
-                        file.add_string_attribute('artist', str(line[11:]))
-                    elif line.startswith('TAG:genre='):
-                        file.add_string_attribute('genre', str(line[10:]))
-                    elif line.startswith('TAG:track='):
-                        file.add_string_attribute('tracknumber', str(line[10:]))
-                    elif line.startswith('TAG:date='):
-                        file.add_string_attribute('date', str(line[9:]))
-                    elif line.startswith('TAG:album='):
-                        file.add_string_attribute('album', str(line[10:]))
-
-                if height != '[n/a]' and width != '[n/a]':
-                    file.add_string_attribute('pixeldimensions', str(width) + 'x'+ str(height))
 
             except:
                 file.add_string_attribute('length','error')
@@ -223,6 +222,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                 file.add_string_attribute('track','error')
                 file.add_string_attribute('date','error')
                 file.add_string_attribute('album','error')
+                file.add_string_attribute('comment','error')
 
         # pdf handling
         if file.is_mime_type('application/pdf'):
