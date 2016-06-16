@@ -2,8 +2,8 @@
 
 # this script can installed to the current user account by running the following commands:
 
-# pip install pymediainfo
 # sudo apt-get install python-nautilus python-mutagen python-pyexiv2 mediainfo
+# pip install pymediainfo
 # mkdir ~/.local/share/nautilus-python/extensions/
 # cp bsc-v2.py ~/.local/share/nautilus-python/extensions/
 # chmod a+x ~/.local/share/nautilus-python/extensions/bsc-v2.py
