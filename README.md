@@ -8,3 +8,7 @@ This script can installed to the current user account by running the following c
     mkdir -p ~/.local/share/nautilus-python/extensions/
     cp bsc-v2.py ~/.local/share/nautilus-python/extensions/
     chmod a+x ~/.local/share/nautilus-python/extensions/bsc-v2.py
+
+You will need to restart nautilus for the changes to take effect:
+    
+    nautilus -q
