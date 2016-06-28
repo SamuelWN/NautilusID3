@@ -32,11 +32,16 @@
 # Andrew@webupd8.org: get EXIF support to work with Nautilus 3
 # samuelwn: changed video metadata extraction to use ffprobe instead of kaa.metadata
 # samuelwn: changed video metadata extraction to use pymediainfo instead of ffprobe
+# samuelwn: added column for video codec information
+
+
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import os
 import urllib
 #import nautilus
 from gi.repository import Nautilus, GObject, Gtk, GdkPixbuf
+# gi.require_version('Nautilus', '3.0')
 # for id3 support
 from mutagen.easyid3 import EasyID3
 # for exif support
@@ -48,7 +53,6 @@ import Image
 # for reading video
 from pymediainfo import MediaInfo
 
-from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 try:
     from pyPdf import PdfFileReader
@@ -75,6 +79,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
             Nautilus.Column(name="NautilusPython::exif_flash_column",attribute="exif_flash",label="EXIF flash",description="EXIF - flash mode"),
             Nautilus.Column(name="NautilusPython::exif_pixeldimensions_column",attribute="exif_pixeldimensions",label="EXIF Image Size",description="Image size - pixel dimensions as reported by EXIF data"),
             Nautilus.Column(name="NautilusPython::pixeldimensions_column",attribute="pixeldimensions",label="Image Size",description="Image/video size - actual pixel dimensions"),
+            Nautilus.Column(name="NautilusPython::codec_column",attribute="codec",label="Video Codec",description="Video encoding codec"),
             Nautilus.Column(name="NautilusPython::comment_column",attribute="comment",label="Comments",description="Image/video comments"),
         )
 
@@ -94,6 +99,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
         file.add_string_attribute('exif_flash', '')
         file.add_string_attribute('exif_pixeldimensions', '')
         file.add_string_attribute('pixeldimensions', '')
+        file.add_string_attribute('codec', '')
         file.add_string_attribute('comment', '')
 
         if file.get_uri_scheme() != 'file':
@@ -209,6 +215,8 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                         except: file.add_string_attribute('samplerate','[n/a]')
                         try: file.add_string_attribute('genre', track.genre)
                         except: file.add_string_attribute('genre', '[n/a]')
+                        try: file.add_string_attribute('codec', track.format)
+                        except: file.add_string_attribute('codec', '[n/a]')
 
 
             except:
@@ -222,6 +230,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                 file.add_string_attribute('track','error')
                 file.add_string_attribute('date','error')
                 file.add_string_attribute('album','error')
+                file.add_string_attribute('codec','error')
                 file.add_string_attribute('comment','error')
 
         # pdf handling
