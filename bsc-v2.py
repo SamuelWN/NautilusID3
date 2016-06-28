@@ -5,10 +5,10 @@
 # sudo apt-get install python-nautilus python-mutagen python-pyexiv2 mediainfo
 # pip install pymediainfo
 # mkdir ~/.local/share/nautilus-python/extensions/
-# cp bsc-v2.py ~/.local/share/nautilus-python/extensions/
+# ln bsc-v2.py ~/.local/share/nautilus-python/extensions/
 # chmod a+x ~/.local/share/nautilus-python/extensions/bsc-v2.py
 
-# alternatively, you can be able to place the script in:
+# alternatively, you can place the script in:
 # /usr/share/nautilus-python/extensions/
 
 # change log:
