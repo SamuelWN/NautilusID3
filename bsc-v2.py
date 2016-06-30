@@ -205,7 +205,11 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                         try: file.add_string_attribute('comment', track.comment)
                         except: file.add_string_attribute('comment', '[n/a]')
                     elif track.track_type == 'Video':
-                        try: file.add_string_attribute('length',"%02i:%02i:%02i" % ((int(track.duration/3600)), (int(track.duration/60%60)), (int(track.duration%60))))
+                        length = track.duration/10000 # ms to s
+                        length = track.duration/10000 # Convert ms to s
+                        # To display fractional seconds, as well:
+                        # try: file.add_string_attribute('length',"%02i:%02i:%02i.%02i" % ((int(length/3600)), (int(length/60%60)), (int(length%60)), (int(track.duration%length)))
+                        try: file.add_string_attribute('length',"%02i:%02i:%02i" % ((int(length/3600)), (int(length/60%60)), (int(length%60))))
                         except: file.add_string_attribute('length','[n/a]')
                         try: file.add_string_attribute('pixeldimensions', str(track.width) + 'x'+ str(track.height))
                         except: file.add_string_attribute('pixeldimensions','[n/a]')
