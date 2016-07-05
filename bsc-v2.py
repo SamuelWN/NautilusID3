@@ -79,7 +79,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
             Nautilus.Column(name="NautilusPython::exif_flash_column",attribute="exif_flash",label="EXIF flash",description="EXIF - flash mode"),
             Nautilus.Column(name="NautilusPython::exif_pixeldimensions_column",attribute="exif_pixeldimensions",label="EXIF Image Size",description="Image size - pixel dimensions as reported by EXIF data"),
             Nautilus.Column(name="NautilusPython::pixeldimensions_column",attribute="pixeldimensions",label="Image Size",description="Image/video size - actual pixel dimensions"),
-            Nautilus.Column(name="NautilusPython::codec_column",attribute="codec",label="Video Codec",description="Video encoding codec"),
+            Nautilus.Column(name="NautilusPython::codec_column",attribute="codec",label="Codec",description="Video encoding codec"),
             Nautilus.Column(name="NautilusPython::comment_column",attribute="comment",label="Comments",description="Image/video comments"),
         )
 
