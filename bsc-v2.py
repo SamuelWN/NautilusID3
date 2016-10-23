@@ -33,6 +33,8 @@
 # samuelwn: changed video metadata extraction to use ffprobe instead of kaa.metadata
 # samuelwn: changed video metadata extraction to use pymediainfo instead of ffprobe
 # samuelwn: added column for video codec information
+# samuelwn: added leading zeros to bitrate (for column proper sorting)
+# samuelwn: added column for resolved symlink target path
 
 
 from __future__ import (absolute_import, division, print_function, unicode_literals)
@@ -65,13 +67,14 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
 
     def get_columns(self):
         return (
+            Nautilus.Column(name="NautilusPython::absolute_path",attribute="realpath",label="Link Path",description="Resolved Path"),
             Nautilus.Column(name="NautilusPython::title_column",attribute="title",label="Title",description="Song title"),
             Nautilus.Column(name="NautilusPython::album_column",attribute="album",label="Album",description="Album"),
             Nautilus.Column(name="NautilusPython::artist_column",attribute="artist",label="Artist",description="Artist"),
             Nautilus.Column(name="NautilusPython::tracknumber_column",attribute="tracknumber",label="Track",description="Track number"),
             Nautilus.Column(name="NautilusPython::genre_column",attribute="genre",label="Genre",description="Genre"),
             Nautilus.Column(name="NautilusPython::date_column",attribute="date",label="Date",description="Date"),
-            Nautilus.Column(name="NautilusPython::bitrate_column",attribute="bitrate",label="Bitrate",description="Audio Bitrate in kilo bits per second"),
+            Nautilus.Column(name="NautilusPython::bitrate_column",attribute="bitrate",label="Bitrate",description="Bitrate in Kbps"),
             Nautilus.Column(name="NautilusPython::samplerate_column",attribute="samplerate",label="Sample rate",description="Sample rate in Hz"),
             Nautilus.Column(name="NautilusPython::length_column",attribute="length",label="Length",description="Length of audio"),
             Nautilus.Column(name="NautilusPython::exif_datetime_original_column",attribute="exif_datetime_original",label="EXIF Dateshot ",description="Get the photo capture date from EXIF data"),
@@ -85,6 +88,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
 
     def update_file_info(self, file):
         # set defaults to blank
+        file.add_string_attribute('realpath', '')
         file.add_string_attribute('title', '')
         file.add_string_attribute('album', '')
         file.add_string_attribute('artist', '')
@@ -107,6 +111,17 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
 
         # strip file:// to get absolute path
         filename = urllib.unquote(file.get_uri()[7:])
+
+        # Link handling
+        realpath="[n/a]"
+        # If the file is a link, resolve the relative path of its target
+        if os.path.islink(filename):
+            try:
+                realpath = os.path.relpath(os.path.realpath(filename), os.path.dirname(filename))
+            except:
+                realpath = "error"
+
+        file.add_string_attribute('realpath', str(realpath))
 
         # mp3 handling
         if file.is_mime_type('audio/mpeg'):
@@ -140,7 +155,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
             try:
                 mpfile = open (filename)
                 mpinfo = MPEGInfo (mpfile)
-                file.add_string_attribute('bitrate', str(mpinfo.bitrate/1000) + " Kbps")
+                file.add_string_attribute('bitrate', str(mpinfo.bitrate/1000).zfill(4) + " Kbps")
                 file.add_string_attribute('samplerate', str(mpinfo.sample_rate) + " Hz")
                 # [SabreWolfy] added consistent formatting of times in format hh:mm:ss
                 # [SabreWolfy[ to allow for correct column sorting by length
@@ -200,6 +215,8 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                         except: file.add_string_attribute('album', '[n/a]')
                         try: file.add_string_attribute('date',track.recorded_date)
                         except: file.add_string_attribute('date', '[n/a]')
+                        try: file.add_string_attribute('genre', track.genre)
+                        except: file.add_string_attribute('genre', '[n/a]')
                         try: file.add_string_attribute('tracknumber',str(track.track_name_position) + "/" + str(track.track_name_total))
                         except: file.add_string_attribute('tracknumber', '[n/a]')
                         try: file.add_string_attribute('comment', track.comment)
@@ -212,12 +229,10 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                         except: file.add_string_attribute('length','[n/a]')
                         try: file.add_string_attribute('pixeldimensions', str(track.width) + 'x'+ str(track.height))
                         except: file.add_string_attribute('pixeldimensions','[n/a]')
-                        try: file.add_string_attribute('bitrate',str(round(track.bit_rate/1000)))
+                        try: file.add_string_attribute('bitrate',str(int(round(track.bit_rate/1000))).zfill(4))
                         except: file.add_string_attribute('bitrate','[n/a]')
                         try: file.add_string_attribute('samplerate',str(int(track.sampling_rate))+' Hz')
                         except: file.add_string_attribute('samplerate','[n/a]')
-                        try: file.add_string_attribute('genre', track.genre)
-                        except: file.add_string_attribute('genre', '[n/a]')
                         try: file.add_string_attribute('codec', track.format)
                         except: file.add_string_attribute('codec', '[n/a]')
 
@@ -230,7 +245,7 @@ class ColumnExtension(GObject.GObject, Nautilus.ColumnProvider, Nautilus.InfoPro
                 file.add_string_attribute('title','error')
                 file.add_string_attribute('artist','error')
                 file.add_string_attribute('genre','error')
-                file.add_string_attribute('track','error')
+                file.add_string_attribute('tracknumber','error')
                 file.add_string_attribute('date','error')
                 file.add_string_attribute('album','error')
                 file.add_string_attribute('codec','error')
